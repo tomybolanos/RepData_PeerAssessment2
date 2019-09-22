@@ -1,0 +1,98 @@
+---
+title: "Coursera - Reproducible Research - Project 2"
+output: html_notebook
+---
+
+Author: Tomy Bolanos
+Date: 2019-09-22
+
+## Exploring the NOAA Storm Database
+
+### Assignment Brief
+
+The basic goal of this assignment is to explore the NOAA Storm Database and answer some basic questions about severe weather events. You must use the database to answer the questions below and show the code for your entire analysis. Your analysis can consist of tables, figures, or other summaries. You may use any R package you want to support your analysis.
+
+### Data processing 
+
+```{r}
+
+# Download the file if it does not exist.
+
+if(!file.exists("repdata-data-StormData.csv.bz2")) {  
+  download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2",
+                destfile = "repdata-data-StormData.csv.bz2", method = "curl")}
+
+# Load data set
+fileData <- read.csv(bzfile("repdata-data-StormData.csv.bz2"), sep=",", header = TRUE)
+# Identifybg variables
+names(fileData)
+# Subsetting the storm data in the memory
+dsStorms <- fileData[ , c('EVTYPE', 'FATALITIES', 'INJURIES', 'PROPDMG', 'PROPDMGEXP', 
+                         'CROPDMG', 'CROPDMGEXP')]
+
+# Convert H, K, M, B units to calculate Property Damage 
+dsStorms$pd <- 0
+dsStorms[dsStorms$PROPDMGEXP == "H", ]$pd <- 
+  dsStorms[dsStorms$PROPDMGEXP == "H", ]$PROPDMG * 10^2
+
+dsStorms[dsStorms$PROPDMGEXP == "K", ]$pd <- 
+  dsStorms[dsStorms$PROPDMGEXP == "K", ]$PROPDMG * 10^3
+
+dsStorms[dsStorms$PROPDMGEXP == "M", ]$pd <- 
+  dsStorms[dsStorms$PROPDMGEXP == "M", ]$PROPDMG * 10^6
+
+dsStorms[dsStorms$PROPDMGEXP == "B", ]$pd <- 
+  dsStorms[dsStorms$PROPDMGEXP == "B", ]$PROPDMG * 10^9
+
+# Converting the H, K, M, B into units to be able to calculate Crop Damage
+dsStorms$cd <- 0
+
+dsStorms[dsStorms$CROPDMGEXP == "H", ]$cd <- 
+  dsStorms[dsStorms$CROPDMGEXP == "H", ]$CROPDMG * 10^2
+
+dsStorms[dsStorms$CROPDMGEXP == "K", ]$cd <- 
+  dsStorms[dsStorms$CROPDMGEXP == "K", ]$CROPDMG * 10^3
+
+dsStorms[dsStorms$CROPDMGEXP == "M", ]$cd <- 
+  dsStorms[dsStorms$CROPDMGEXP == "M", ]$CROPDMG * 10^6
+
+dsStorms[dsStorms$CROPDMGEXP == "B", ]$cd <- 
+  dsStorms[dsStorms$CROPDMGEXP == "B", ]$CROPDMG * 10^9
+
+```
+
+### Analysis and Results
+
+#### 1. Across the United States, which types of events (as indicated in the \color{red}{\verb|EVTYPE|}EVTYPE variable) are most harmful with respect to population health?
+
+```{r}
+library(ggplot2)
+# Plotting the Number of Fatalities By the Most Harmful Event Types
+fat <- aggregate(FATALITIES ~ EVTYPE, data = dsStorms, sum)
+fat <- fat[order(-fat$FATALITIES), ][1:20, ]
+fat$EVTYPE <- factor(fat$EVTYPE, levels = fat$EVTYPE)
+
+ggplot(fat, aes(x = EVTYPE, y = FATALITIES)) + 
+  geom_bar(stat = "identity", fill = "red", las = 3) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("EVENTS") + ylab("FATALITIES") +
+  ggtitle("Fatalities by Top 20 Weather Events")
+```
+
+
+### 2. Across the United States, which types of events have the greatest economic consequences ?
+
+```{r}
+# Plotting the Number of Damages Catagorized By the Most Harmful Event 
+dam <- aggregate(pd + cd ~ EVTYPE, data = dsStorms, sum)
+names(dam) <- c("EVTYPE", "TDAMAGE")
+dam <- dam[order(-dam$TDAMAGE), ][1:20, ]
+dam$EVTYPE <- factor(dam$EVTYPE, levels = dam$EVTYPE)
+
+ggplot(dam, aes(x = EVTYPE, y = TDAMAGE)) + 
+    geom_bar(stat = "identity", fill = "red", las = 3) + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+    xlab("EVENT") + ylab("DAMAGES (US$)") +
+  ggtitle("Property & Crop Damages by Top 20  Events")
+```
+
